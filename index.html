@@ -109,13 +109,25 @@ const GROUND = H - 48;
 
 const S = 4;
 
-//                  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-const BODY = [
+//                   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+// Frame A – ears at normal position (rows 2-4)
+const BODY_A = [
   /* row 0 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
   /* row 1 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
-  /* row 2 */ [1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1],  // ← ears + eyes (upper)
-  /* row 3 */ [1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1],  // ← ears + eyes
-  /* row 4 */ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  // ← ears only
+  /* row 2 */ [1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1],  // ears + eyes
+  /* row 3 */ [1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1],  // ears + eyes
+  /* row 4 */ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  // ears only
+  /* row 5 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+  /* row 6 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+  /* row 7 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+];
+// Frame B – ears shifted UP 1 row (パタパタ effect)
+const BODY_B = [
+  /* row 0 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+  /* row 1 */ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  // ← ears UP
+  /* row 2 */ [1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1],  // ears + eyes
+  /* row 3 */ [1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1],  // ears + eyes
+  /* row 4 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],  // ← ears retracted
   /* row 5 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
   /* row 6 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
   /* row 7 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
@@ -136,9 +148,9 @@ const LEGS_J = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
 ];
 
-const FA = [...BODY, ...LEGS_A];
-const FB = [...BODY, ...LEGS_B];
-const FJ = [...BODY, ...LEGS_J];
+const FA = [...BODY_A, ...LEGS_A];  // ears normal + feet normal
+const FB = [...BODY_B, ...LEGS_B];  // ears UP    + feet spread
+const FJ = [...BODY_B, ...LEGS_J];  // ears UP (jump excitement!)
 
 const CW = 16 * S; // 64px
 const CH = 11 * S; // 44px
@@ -205,8 +217,9 @@ function update() {
   obstInterval = Math.max(80, 130 - Math.floor(score / 300) * 5);
   groundOffset = (groundOffset + speed) % 18;
 
-  // Physics
-  clawd.vy += GRAVITY;
+  // Physics – peak hold: near the top of jump, gravity is much weaker
+  const grav = Math.abs(clawd.vy) < 4 ? GRAVITY * 0.25 : GRAVITY;
+  clawd.vy += grav;
   clawd.y  += clawd.vy;
   const gY = GROUND - CH;
   if (clawd.y >= gY) { clawd.y=gY; clawd.vy=0; clawd.onGround=true; clawd.jumps=0; }
