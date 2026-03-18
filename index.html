@@ -113,9 +113,9 @@ const S = 4;
 const BODY = [
   /* row 0 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
   /* row 1 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
-  /* row 2 */ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  // ← ears
+  /* row 2 */ [1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1],  // ← ears + eyes (upper)
   /* row 3 */ [1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1],  // ← ears + eyes
-  /* row 4 */ [1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1],  // ← ears + eyes
+  /* row 4 */ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  // ← ears only
   /* row 5 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
   /* row 6 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
   /* row 7 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
@@ -171,7 +171,7 @@ const OB_TYPES = [
 // ── Game state ──────────────────────────────────────────
 let state = 'idle';
 let score = 0, hiScore = parseInt(localStorage.getItem('clawd_hi') || '0');
-let speed = 5, tick = 0;
+let speed = 4, tick = 0;
 let clawd = {};
 let obstacles = [], obstTimer = 0, obstInterval = 90;
 let flash = 0, milestoneLabel = '', milestoneAlpha = 0;
@@ -203,8 +203,8 @@ function update() {
   score = Math.floor(tick / 6);
 
   if (score > hiScore) { hiScore = score; localStorage.setItem('clawd_hi', hiScore); }
-  speed        = 5 + Math.floor(score / 300) * 0.6;
-  obstInterval = Math.max(42, 90 - Math.floor(score / 150) * 4);
+  speed        = 4 + Math.floor(score / 500) * 0.5;
+  obstInterval = Math.max(60, 110 - Math.floor(score / 200) * 4);
   groundOffset = (groundOffset + speed) % 18;
 
   // Physics
