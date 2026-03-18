@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLAWD RUN</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', Courier, monospace;
+      color: #E8642A;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .title {
+      font-size: 1.1rem;
+      letter-spacing: 6px;
+      margin-bottom: 14px;
+      opacity: 0.9;
+    }
+    #gameCanvas {
+      display: block;
+      border: 2px dashed #E8642A;
+      cursor: pointer;
+      max-width: 100%;
+    }
+    .hint {
+      margin-top: 12px;
+      font-size: 0.68rem;
+      opacity: 0.35;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">── CLAWD RUN v1.0.0 ──</div>
+  <canvas id="gameCanvas"></canvas>
+  <div class="hint">SPACE / TAP to jump &nbsp;·&nbsp; Double jump OK</div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const W = 800;
+    const H = 260;
+    canvas.width  = W;
+    canvas.height = H;
+
+    // ── Palette ────────────────────────────────────────
+    const C = {
+      bg:          '#111111',
+      ground:      '#E8642A',
+      clawd:       '#E8642A',
+      clawdDark:   '#8B3A10',
+      clawdEye:    '#1a0800',
+      obRed:       '#E03030',
+      obOrange:    '#E06020',
+      obPink:      '#C02050',
+      obText:      '#111111',
+      score:       '#E8642A',
+      dim:         'rgba(232,100,42,0.28)',
+    };
+
+    const SCALE  = 3;         // each "pixel" = 3×3 px
+    const GROUND = H - 48;    // y of ground line
+
+    // ── Clawd pixel art (side view, 12×10 grid) ────────
+    // 0=transparent  1=body(orange)  2=eye(dark)  3=shadow
+    const PX = {
+      _: 0, O: 1, X: 2, S: 3,
+    };
+    const {_,O,X,S} = PX;
+
+    // Walk frame A
+    const FA = [
+      [_,_,O,O,O,O,O,O,O,_,_,_],
+      [_,O,O,O,O,O,O,O,O,O,_,_],
+      [_,O,X,X,O,O,S,O,O,O,_,_],
+      [_,O,O,O,O,O,O,O,O,O,_,_],
+      [_,O,O,O,O,O,O,O,O,O,_,_],
+      [_,_,O,O,O,O,O,O,O,_,_,_],
+      [_,_,O,_,_,_,O,_,_,_,_,_],  // legs
+      [_,O,O,_,_,_,O,_,_,_,_,_],
+      [_,O,_,_,_,_,_,_,_,_,_,_],
+    ];
+
+    // Walk frame B (legs swapped)
+    const FB = [
+      [_,_,O,O,O,O,O,O,O,_,_,_],
+      [_,O,O,O,O,O,O,O,O,O,_,_],
+      [_,O,X,X,O,O,S,O,O,O,_,_],
+      [_,O,O,O,O,O,O,O,O,O,_,_],
+      [_,O,O,O,O,O,O,O,O,O,_,_],
+      [_,_,O,O,O,O,O,O,O,_,_,_],
+      [_,_,_,_,O,_,_,_,O,_,_,_],  // legs
+      [_,_,_,_,O,_,_,_,O,O,_,_],
+      [_,_,_,_,_,_,_,_,_,O,_,_],
+    ];
+
+    // Jump frame (legs splayed)
+    const FJ = [
+      [_,_,O,O,O,O,O,O,O,_,_,_],
+      [_,O,O,O,O,O,O,O,O,O,_,_],
+      [_,O,X,X,O,O,S,O,O,O,_,_],
+      [_,O,O,O,O,O,O,O,O,O,_,_],
+      [_,O,O,O,O,O,O,O,O,O,_,_],
+      [_,_,O,O,O,O,O,O,O,_,_,_],
+      [O,_,_,_,_,_,_,_,_,_,O,_],  // legs spread
+      [O,_,_,_,_,_,_,_,_,_,O,_],
+      [_,_,_,_,_,_,_,_,_,_,_,_],
+    ];
+
+    const CLAWD_PW = 12 * SCALE;
+    const CLAWD_PH =  9 * SCALE;
+
+    function drawPixels(grid, px, py) {
+      for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+          const v = grid[r][c];
+          if (v === 0) continue;
+          ctx.fillStyle = v === 1 ? C.clawd
+                        : v === 2 ? C.clawdEye
+                        :           C.clawdDark;
+          ctx.fillRect(px + c * SCALE, py + r * SCALE, SCALE, SCALE);
+        }
+      }
+    }
+
+    // ── Obstacle types ─────────────────────────────────
+    const OB_TYPES = [
+      { label:'ERROR',    w:68,  h:46, col:C.obRed    },
+      { label:'BUG',      w:50,  h:38, col:C.obOrange },
+      { label:'SEGFAULT', w:90,  h:58, col:C.obPink   },
+      { label:'404',      w:54,  h:42, col:C.obRed    },
+      { label:'PANIC',    w:76,  h:54, col:C.obPink   },
+      { label:'NaN',      w:48,  h:36, col:C.obOrange },
+    ];
+
+    // ── State ───────────────────────────────────────────
+    let state = 'idle';   // idle | running | dead
+    let score    = 0;
+    let hiScore  = parseInt(localStorage.getItem('clawd_hi') || '0');
+    let speed    = 5;
+    let tick     = 0;
+
+    let clawd = {};
+    let obstacles = [];
+    let obstTimer = 0;
+    let obstInterval = 90;
+
+    let flash = 0;
+    let milestoneLabel = '';
+    let milestoneAlpha = 0;
+
+    // scroll dots for ground
+    let groundOffset = 0;
+
+    function resetClawd() {
+      clawd = {
+        x: 80,
+        y: GROUND - CLAWD_PH,
+        vy: 0,
+        onGround: true,
+        jumps: 0,
+        frame: 0,      // 0=A 1=B
+        frameTimer: 0,
+      };
+    }
+
+    function startGame() {
+      score        = 0;
+      speed        = 5;
+      tick         = 0;
+      obstacles    = [];
+      obstTimer    = 0;
+      obstInterval = 90;
+      flash        = 0;
+      milestoneAlpha = 0;
+      resetClawd();
+      state = 'running';
+    }
+
+    // ── Physics constants ───────────────────────────────
+    const GRAVITY   = 0.65;
+    const JUMP_VY   = -14;
+    const JUMP2_VY  = -12;
+
+    function doJump() {
+      if (clawd.jumps === 0) {
+        clawd.vy = JUMP_VY;
+        clawd.jumps = 1;
+        clawd.onGround = false;
+      } else if (clawd.jumps === 1) {
+        clawd.vy = JUMP2_VY;
+        clawd.jumps = 2;
+      }
+    }
+
+    // ── Update ──────────────────────────────────────────
+    function update() {
+      if (state !== 'running') return;
+
+      tick++;
+      score = Math.floor(tick / 6);
+
+      if (score > hiScore) {
+        hiScore = score;
+        localStorage.setItem('clawd_hi', hiScore);
+      }
+
+      // Speed ramp
+      speed        = 5 + Math.floor(score / 300) * 0.6;
+      obstInterval = Math.max(42, 90 - Math.floor(score / 150) * 4);
+
+      // Ground scroll
+      groundOffset = (groundOffset + speed) % 18;
+
+      // Clawd physics
+      clawd.vy += GRAVITY;
+      clawd.y  += clawd.vy;
+
+      const groundY = GROUND - CLAWD_PH;
+      if (clawd.y >= groundY) {
+        clawd.y      = groundY;
+        clawd.vy     = 0;
+        clawd.onGround = true;
+        clawd.jumps  = 0;
+      }
+
+      // Walk animation
+      if (clawd.onGround) {
+        clawd.frameTimer++;
+        if (clawd.frameTimer >= 7) {
+          clawd.frame     = 1 - clawd.frame;
+          clawd.frameTimer = 0;
+        }
+      }
+
+      // Spawn obstacle
+      obstTimer++;
+      if (obstTimer >= obstInterval) {
+        obstTimer = 0;
+        const t = OB_TYPES[Math.floor(Math.random() * OB_TYPES.length)];
+        obstacles.push({ x: W + 20, type: t });
+      }
+
+      // Move & cull obstacles
+      for (const ob of obstacles) ob.x -= speed;
+      obstacles = obstacles.filter(ob => ob.x + ob.type.w > -10);
+
+      // Milestone
+      if (score > 0 && score % 500 === 0 && milestoneAlpha === 0) {
+        flash = 14;
+        milestoneLabel = `SCORE ${score} !`;
+        milestoneAlpha = 1.0;
+      }
+      if (milestoneAlpha > 0) milestoneAlpha = Math.max(0, milestoneAlpha - 0.012);
+
+      // Collision (AABB with small inset)
+      const inset = 5;
+      const cx = clawd.x + inset;
+      const cy = clawd.y + inset;
+      const cw = CLAWD_PW - inset * 2;
+      const ch = CLAWD_PH - inset;
+
+      for (const ob of obstacles) {
+        const ox = ob.x, oy = GROUND - ob.type.h;
+        if (cx < ox + ob.type.w && cx + cw > ox &&
+            cy < oy + ob.type.h && cy + ch > oy) {
+          state = 'dead';
+          return;
+        }
+      }
+    }
+
+    // ── Draw helpers ────────────────────────────────────
+    function drawGround() {
+      ctx.strokeStyle = C.ground;
+      ctx.lineWidth   = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(0, GROUND);
+      ctx.lineTo(W, GROUND);
+      ctx.stroke();
+
+      // scrolling dots below
+      ctx.fillStyle = C.dim;
+      for (let x = -groundOffset; x < W; x += 18) {
+        ctx.fillRect(x, GROUND + 6, 4, 4);
+      }
+    }
+
+    function drawObstacle(ob) {
+      const ox = ob.x;
+      const oy = GROUND - ob.type.h;
+      const ow = ob.type.w;
+      const oh = ob.type.h;
+
+      // body
+      ctx.fillStyle = ob.type.col;
+      ctx.fillRect(ox, oy, ow, oh);
+
+      // inner border (pixel-art look)
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(ox + 2, oy + 2, ow - 4, 3);
+      ctx.fillRect(ox + 2, oy + oh - 5, ow - 4, 3);
+
+      // label
+      const fs = Math.max(10, Math.floor(oh / 3.2));
+      ctx.fillStyle = C.obText;
+      ctx.font      = `bold ${fs}px "Courier New"`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(ob.type.label, ox + ow / 2, oy + oh / 2);
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    function drawScore() {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = C.score;
+      ctx.font      = '17px "Courier New"';
+      ctx.fillText(`SCORE  ${String(score).padStart(5,'0')}`, W - 18, 32);
+      ctx.fillStyle = C.dim;
+      ctx.font      = '13px "Courier New"';
+      ctx.fillText(`HI     ${String(hiScore).padStart(5,'0')}`, W - 18, 50);
+    }
+
+    function drawClawd() {
+      const grid = clawd.onGround
+        ? (clawd.frame === 0 ? FA : FB)
+        : FJ;
+      drawPixels(grid, clawd.x, clawd.y);
+    }
+
+    function drawIdleScreen() {
+      ctx.fillStyle = 'rgba(17,17,17,0.55)';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = C.score;
+      ctx.font      = 'bold 26px "Courier New"';
+      ctx.fillText('PRESS SPACE TO START', W/2, H/2 - 18);
+
+      ctx.fillStyle = C.dim;
+      ctx.font      = '13px "Courier New"';
+      ctx.fillText('Welcome back! Clawd v1.0.0', W/2, H/2 + 14);
+    }
+
+    function drawDeadScreen() {
+      ctx.fillStyle = 'rgba(0,0,0,0.52)';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#E03030';
+      ctx.font      = 'bold 30px "Courier New"';
+      ctx.fillText('PROCESS KILLED', W/2, H/2 - 28);
+
+      ctx.fillStyle = C.score;
+      ctx.font      = '16px "Courier New"';
+      ctx.fillText(`SCORE  ${String(score).padStart(5,'0')}`, W/2, H/2 + 8);
+
+      if (score > 0 && score >= hiScore) {
+        ctx.fillStyle = '#FFD040';
+        ctx.font      = '14px "Courier New"';
+        ctx.fillText('✦  NEW HIGH SCORE  ✦', W/2, H/2 + 30);
+      }
+
+      ctx.fillStyle = C.dim;
+      ctx.font      = '13px "Courier New"';
+      ctx.fillText('PRESS SPACE TO RESTART', W/2, H/2 + 60);
+    }
+
+    // ── Main draw ───────────────────────────────────────
+    function draw() {
+      // bg
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // milestone flash
+      if (flash > 0) {
+        ctx.fillStyle = `rgba(232,100,42,${flash * 0.018})`;
+        ctx.fillRect(0, 0, W, H);
+        flash--;
+      }
+
+      drawGround();
+
+      for (const ob of obstacles) drawObstacle(ob);
+
+      drawClawd();
+
+      drawScore();
+
+      // speed meter (subtle)
+      ctx.fillStyle = C.dim;
+      ctx.font      = '11px "Courier New"';
+      ctx.textAlign = 'left';
+      ctx.fillText(`VEL ${speed.toFixed(1)}`, 18, H - 14);
+
+      // milestone text
+      if (milestoneAlpha > 0) {
+        ctx.fillStyle = `rgba(232,100,42,${milestoneAlpha})`;
+        ctx.font      = 'bold 20px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText(milestoneLabel, W/2, 52);
+      }
+
+      if (state === 'idle') drawIdleScreen();
+      if (state === 'dead') drawDeadScreen();
+    }
+
+    // ── Loop ────────────────────────────────────────────
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // ── Input ───────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        if (state === 'idle' || state === 'dead') startGame();
+        else doJump();
+      }
+    });
+
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (state === 'idle' || state === 'dead') startGame();
+      else doJump();
+    }, { passive: false });
+
+    canvas.addEventListener('click', () => {
+      if (state === 'idle' || state === 'dead') startGame();
+      else doJump();
+    });
+
+    // ── Init ────────────────────────────────────────────
+    resetClawd();
+    loop();
+  </script>
+</body>
+</html>
