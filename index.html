@@ -241,7 +241,7 @@ function resetClawd() {
 }
 
 function startGame() {
-  score=0; speed=3.5; tick=0;
+  score=0; speed=4.5; tick=0;
   obstacles=[]; obstTimer=0; obstInterval=90;
   flash=0; milestoneAlpha=0;
   resetClawd();
@@ -259,7 +259,7 @@ function update() {
   score = Math.floor(tick / 6);
 
   if (score > hiScore) { hiScore = score; localStorage.setItem('clawd_hi', hiScore); }
-  speed        = 3.5 + Math.floor(score / 800) * 0.4;
+  speed        = 4.5 + Math.floor(score / 100) * 0.15;
   obstInterval = Math.max(80, 130 - Math.floor(score / 300) * 5);
   groundOffset = (groundOffset + speed) % 18;
   // Clouds & stars parallax (much slower than ground)
