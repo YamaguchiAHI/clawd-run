@@ -260,7 +260,6 @@ function update() {
 
   if (score > hiScore) { hiScore = score; localStorage.setItem('clawd_hi', hiScore); }
   speed        = 4.5 + Math.floor(score / 100) * 0.15;
-  obstInterval = Math.max(80, 130 - Math.floor(score / 300) * 5);
   groundOffset = (groundOffset + speed) % 18;
   // Clouds & stars parallax (much slower than ground)
   const cs = speed * 0.18;
@@ -285,6 +284,9 @@ function update() {
   if (++obstTimer >= obstInterval) {
     obstTimer = 0;
     obstacles.push({ x: W+20, type: OB_TYPES[Math.floor(Math.random()*OB_TYPES.length)] });
+    // Next interval: base (decreases with score) + random bonus, min 80 to prevent impossible gaps
+    const base = Math.max(0, 110 - Math.floor(score / 300) * 5);
+    obstInterval = Math.max(80, base + Math.floor(Math.random() * 60));
   }
   for (const ob of obstacles) ob.x -= speed;
   obstacles = obstacles.filter(ob => ob.x + ob.type.w > -10);
