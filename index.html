@@ -158,14 +158,14 @@ function drawPixels(grid, px, py) {
 
 // ── Obstacle types ──────────────────────────────────────
 const OB_TYPES = [
-  { label:'ERROR',     w:70,  h:48, col:C.obRed    },
-  { label:'BUG',       w:52,  h:40, col:C.obOrange },
-  { label:'SEGFAULT',  w:96,  h:60, col:C.obPink   },
-  { label:'404',       w:56,  h:44, col:C.obRed    },
-  { label:'PANIC',     w:78,  h:56, col:C.obPink   },
-  { label:'NaN',       w:50,  h:38, col:C.obOrange },
-  { label:'UNDEFINED', w:106, h:50, col:C.obRed    },
-  { label:'TIMEOUT',   w:90,  h:52, col:C.obPink   },
+  { label:'ERROR',     w:62,  h:44, col:C.obRed    },
+  { label:'BUG',       w:46,  h:36, col:C.obOrange },
+  { label:'SEGFAULT',  w:78,  h:50, col:C.obPink   },
+  { label:'404',       w:50,  h:40, col:C.obRed    },
+  { label:'PANIC',     w:68,  h:46, col:C.obPink   },
+  { label:'NaN',       w:44,  h:34, col:C.obOrange },
+  { label:'UNDEFINED', w:84,  h:44, col:C.obRed    },
+  { label:'TIMEOUT',   w:74,  h:46, col:C.obPink   },
 ];
 
 // ── Game state ──────────────────────────────────────────
@@ -177,7 +177,7 @@ let obstacles = [], obstTimer = 0, obstInterval = 90;
 let flash = 0, milestoneLabel = '', milestoneAlpha = 0;
 let groundOffset = 0;
 
-const GRAVITY = 0.65, JUMP_VY = -14.5, JUMP2_VY = -12.5;
+const GRAVITY = 0.60, JUMP_VY = -16, JUMP2_VY = -14;
 
 function resetClawd() {
   clawd = { x:80, y: GROUND - CH, vy:0, onGround:true, jumps:0, frame:0, ft:0 };
