@@ -188,7 +188,7 @@ let obstacles = [], obstTimer = 0, obstInterval = 90;
 let flash = 0, milestoneLabel = '', milestoneAlpha = 0;
 let groundOffset = 0;
 
-const GRAVITY = 0.55, JUMP_VY = -13;
+const GRAVITY = 0.55, JUMP_VY = -10;
 
 function resetClawd() {
   clawd = { x:80, y: GROUND - CH, vy:0, onGround:true, jumps:0, frame:0, ft:0 };
@@ -218,7 +218,7 @@ function update() {
   groundOffset = (groundOffset + speed) % 18;
 
   // Physics – peak hold: near the top of jump, gravity is much weaker
-  const grav = Math.abs(clawd.vy) < 4 ? GRAVITY * 0.25 : GRAVITY;
+  const grav = Math.abs(clawd.vy) < 3 ? GRAVITY * 0.25 : GRAVITY;
   clawd.vy += grav;
   clawd.y  += clawd.vy;
   const gY = GROUND - CH;
