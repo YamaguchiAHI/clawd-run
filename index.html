@@ -168,22 +168,21 @@ function drawPixels(grid, px, py) {
 }
 
 // ── Background elements ──────────────────────────────────
-// Stars (fixed positions, twinkle via tick)
-const STARS = Array.from({length: 20}, () => ({
+// Stars (scroll slowly like clouds, fixed opacity per star)
+const STARS = Array.from({length: 10}, () => ({
   x:  Math.random() * W,
   y:  6 + Math.random() * (GROUND - 70),
   r:  Math.random() < 0.4 ? 3 : 2,
-  ph: Math.random() * Math.PI * 2,
+  a:  0.40 + Math.random() * 0.30,  // fixed opacity 0.40-0.70
 }));
 
 // Cloud scroll positions
 let cloudX = [120, 390, 640];
 
 function drawBackground() {
-  // ── Stars (twinkle) ──
+  // ── Stars (scroll) ──
   for (const s of STARS) {
-    const a = 0.40 + 0.35 * Math.sin(tick * 0.04 + s.ph);
-    ctx.fillStyle = `rgba(232,100,42,${a.toFixed(2)})`;
+    ctx.fillStyle = `rgba(232,100,42,${s.a.toFixed(2)})`;
     ctx.fillRect(s.x, s.y, s.r, s.r);
   }
 
@@ -262,9 +261,11 @@ function update() {
   speed        = 3.5 + Math.floor(score / 800) * 0.4;
   obstInterval = Math.max(80, 130 - Math.floor(score / 300) * 5);
   groundOffset = (groundOffset + speed) % 18;
-  // Clouds parallax (much slower than ground)
+  // Clouds & stars parallax (much slower than ground)
   const cs = speed * 0.18;
   for (let i = 0; i < 3; i++) cloudX[i] = ((cloudX[i] - cs) + W) % W;
+  const ss = speed * 0.07;
+  for (const s of STARS) s.x = ((s.x - ss) + W) % W;
 
   // Physics – peak hold: near the top of jump, gravity is much weaker
   const grav = Math.abs(clawd.vy) < 3 ? GRAVITY * 0.25 : GRAVITY;
