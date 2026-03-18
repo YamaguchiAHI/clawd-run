@@ -176,8 +176,9 @@ const STARS = Array.from({length: 10}, () => ({
   a:  0.40 + Math.random() * 0.30,  // fixed opacity 0.40-0.70
 }));
 
-// Cloud scroll positions
+// Cloud & moon scroll positions
 let cloudX = [120, 390, 640];
+let moonX  = 58;
 
 function drawBackground() {
   // ── Stars (scroll) ──
@@ -186,8 +187,8 @@ function drawBackground() {
     ctx.fillRect(s.x, s.y, s.r, s.r);
   }
 
-  // ── Crescent moon (upper-left) ──
-  const mx = 58, my = 42, mr = 20;
+  // ── Crescent moon (slow scroll) ──
+  const mx = moonX, my = 42, mr = 20;
   ctx.save();
   ctx.globalAlpha = 0.5;
   ctx.fillStyle = C.body;
@@ -266,6 +267,7 @@ function update() {
   for (let i = 0; i < 3; i++) cloudX[i] = ((cloudX[i] - cs) + W) % W;
   const ss = speed * 0.07;
   for (const s of STARS) s.x = ((s.x - ss) + W) % W;
+  moonX = ((moonX - speed * 0.03) + W) % W;
 
   // Physics – peak hold: near the top of jump, gravity is much weaker
   const grav = Math.abs(clawd.vy) < 3 ? GRAVITY * 0.25 : GRAVITY;
