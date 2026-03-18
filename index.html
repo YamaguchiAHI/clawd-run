@@ -68,7 +68,7 @@
 <body>
   <div class="title">── CLAWD RUN v1.0.0 ──</div>
   <div id="wrap"><canvas id="gameCanvas"></canvas></div>
-  <div class="hint">SPACE / TAP to jump &nbsp;·&nbsp; Double jump OK</div>
+  <div class="hint">SPACE / TAP to jump</div>
   <button id="jumpBtn" aria-label="Jump">
     <span class="ar">↑</span><span>JUMP</span>
   </button>
@@ -121,15 +121,14 @@ const BODY = [
   /* row 7 */ [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
 ];
 
-// Leg row templates
-const _ALL  = [0,0,1,1,0,1,1,0,0,1,1,0,1,1,0,0]; // all 4 legs
-const _OUT  = [0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0]; // outer pair only (L1, L4)
-const _INN  = [0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0]; // inner pair only (L2, L3)
+// Leg row templates – always show all 4 legs (no disconnection)
+const _ALL  = [0,0,1,1,0,1,1,0,0,1,1,0,1,1,0,0]; // all 4 legs, normal
+const _SPR  = [0,1,1,0,0,0,1,1,0,1,1,0,0,1,1,0]; // all 4 legs, feet spread outward
 
-// Walk A – inner legs lead (outer raised = shorter)
-const LEGS_A = [_INN, _ALL, _ALL];
-// Walk B – outer legs lead (inner raised = shorter)
-const LEGS_B = [_OUT, _ALL, _ALL];
+// Walk A – feet normal
+const LEGS_A = [_ALL, _ALL, _ALL];
+// Walk B – feet spread (パタパタ waddle)
+const LEGS_B = [_ALL, _ALL, _SPR];
 // Jump – legs spread wide to sides
 const LEGS_J = [
   [1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1],
@@ -158,14 +157,14 @@ function drawPixels(grid, px, py) {
 
 // ── Obstacle types ──────────────────────────────────────
 const OB_TYPES = [
-  { label:'ERROR',     w:62,  h:44, col:C.obRed    },
-  { label:'BUG',       w:46,  h:36, col:C.obOrange },
-  { label:'SEGFAULT',  w:78,  h:50, col:C.obPink   },
-  { label:'404',       w:50,  h:40, col:C.obRed    },
-  { label:'PANIC',     w:68,  h:46, col:C.obPink   },
-  { label:'NaN',       w:44,  h:34, col:C.obOrange },
-  { label:'UNDEFINED', w:84,  h:44, col:C.obRed    },
-  { label:'TIMEOUT',   w:74,  h:46, col:C.obPink   },
+  { label:'ERROR',     w:54,  h:38, col:C.obRed    },
+  { label:'BUG',       w:40,  h:30, col:C.obOrange },
+  { label:'SEGFAULT',  w:68,  h:44, col:C.obPink   },
+  { label:'404',       w:44,  h:34, col:C.obRed    },
+  { label:'PANIC',     w:58,  h:38, col:C.obPink   },
+  { label:'NaN',       w:38,  h:28, col:C.obOrange },
+  { label:'UNDEFINED', w:70,  h:38, col:C.obRed    },
+  { label:'TIMEOUT',   w:62,  h:38, col:C.obPink   },
 ];
 
 // ── Game state ──────────────────────────────────────────
@@ -177,14 +176,14 @@ let obstacles = [], obstTimer = 0, obstInterval = 90;
 let flash = 0, milestoneLabel = '', milestoneAlpha = 0;
 let groundOffset = 0;
 
-const GRAVITY = 0.60, JUMP_VY = -16, JUMP2_VY = -14;
+const GRAVITY = 0.55, JUMP_VY = -13;
 
 function resetClawd() {
   clawd = { x:80, y: GROUND - CH, vy:0, onGround:true, jumps:0, frame:0, ft:0 };
 }
 
 function startGame() {
-  score=0; speed=5; tick=0;
+  score=0; speed=3.5; tick=0;
   obstacles=[]; obstTimer=0; obstInterval=90;
   flash=0; milestoneAlpha=0;
   resetClawd();
@@ -192,8 +191,7 @@ function startGame() {
 }
 
 function doJump() {
-  if (clawd.jumps === 0)      { clawd.vy = JUMP_VY;  clawd.onGround=false; clawd.jumps=1; }
-  else if (clawd.jumps === 1) { clawd.vy = JUMP2_VY; clawd.jumps=2; }
+  if (clawd.jumps === 0) { clawd.vy = JUMP_VY; clawd.onGround=false; clawd.jumps=1; }
 }
 
 // ── Update ──────────────────────────────────────────────
@@ -203,8 +201,8 @@ function update() {
   score = Math.floor(tick / 6);
 
   if (score > hiScore) { hiScore = score; localStorage.setItem('clawd_hi', hiScore); }
-  speed        = 4 + Math.floor(score / 500) * 0.5;
-  obstInterval = Math.max(60, 110 - Math.floor(score / 200) * 4);
+  speed        = 3.5 + Math.floor(score / 800) * 0.4;
+  obstInterval = Math.max(80, 130 - Math.floor(score / 300) * 5);
   groundOffset = (groundOffset + speed) % 18;
 
   // Physics
@@ -215,7 +213,7 @@ function update() {
 
   // Walk anim
   if (clawd.onGround) {
-    if (++clawd.ft >= 7) { clawd.frame = 1 - clawd.frame; clawd.ft = 0; }
+    if (++clawd.ft >= 5) { clawd.frame = 1 - clawd.frame; clawd.ft = 0; }
   }
 
   // Obstacles
